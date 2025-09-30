@@ -1,0 +1,97 @@
+services:
+  # Frontend (Remix App)
+  - type: web
+    name: video-personalization-frontend
+    env: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SHOPIFY_API_KEY
+        sync: false
+      - key: SHOPIFY_API_SECRET
+        sync: false
+      - key: SCOPES
+        value: write_products,read_orders,write_metaobjects,read_metaobjects,write_customers,read_customers
+      - key: HOST
+        sync: false
+
+  # Backend (Rails API)
+  - type: web
+    name: video-personalization-backend
+    env: ruby
+    plan: starter
+    buildCommand: bundle install && rails db:migrate
+    startCommand: rails server -p $PORT
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: video-personalization-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: video-personalization-redis
+          property: connectionString
+      - key: B2_ACCOUNT_ID
+        sync: false
+      - key: B2_ACCOUNT_TOKEN
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_BUCKET_NAME
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+
+  # Sidekiq Worker
+  - type: worker
+    name: video-personalization-worker
+    env: ruby
+    plan: starter
+    buildCommand: bundle install
+    startCommand: bundle exec sidekiq
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: video-personalization-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: video-personalization-redis
+          property: connectionString
+      - key: B2_ACCOUNT_ID
+        sync: false
+      - key: B2_ACCOUNT_TOKEN
+        sync: false
+      - key: B2_KEY_ID
+        sync: false
+      - key: B2_APPLICATION_KEY
+        sync: false
+      - key: B2_BUCKET_NAME
+        sync: false
+
+databases:
+  - name: video-personalization-db
+    plan: starter
+    databaseName: video_personalization_production
+
+  - name: video-personalization-redis
+    type: redis
+    plan: starter
+
