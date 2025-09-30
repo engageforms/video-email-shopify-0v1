@@ -2,7 +2,7 @@
 
 client_id = "75fabf5d369d56d68571b0accd4fd4a0"
 name = "Video email app 0v1"
-application_url = "https://video-email-shopify-0v1-09770cb.onrender.com"
+application_url = "https://video-email-shopify-0v1.onrender.com"
 embedded = true
 
 [build]
@@ -41,4 +41,4 @@ api_version = "2025-10"
 scopes = "read_checkouts,read_customers,write_customers,read_metaobjects,write_metaobjects,read_orders,write_products"
 
 [auth]
-redirect_urls = [ "https://video-email-shopify-0v1-09770cb.onrender.com/api/auth" ]
+redirect_urls = [ "https://video-email-shopify-0v1.onrender.com/api/auth" ]
