@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
+import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
+import { useLoaderData, useFetcher } from "@remix-run/react";
 import {
   Page,
   Layout,
@@ -28,12 +28,41 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     where: { shop: session.shop },
     orderBy: { createdAt: 'desc' },
   });
+  // Get product->video mappings
+  const mappings = await (db as any).productVideo.findMany({
+    where: { shop: session.shop },
+    orderBy: { updatedAt: 'desc' },
+  });
 
-  return { videos };
+  return { videos, mappings };
+};
+
+export const action = async ({ request }: ActionFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const formData = await request.formData();
+  const action = formData.get("action");
+
+  if (action === "upsert_mapping") {
+    const productId = String(formData.get("productId") || "").trim();
+    const videoUrl = String(formData.get("videoUrl") || "").trim();
+
+    if (!productId || !videoUrl) return null;
+
+    await (db as any).productVideo.upsert({
+      where: { shop_productId: { shop: session.shop, productId } },
+      create: { shop: session.shop, productId, videoUrl },
+      update: { videoUrl },
+    });
+  }
+
+  return null;
 };
 
 export default function Videos() {
-  const { videos } = useLoaderData<typeof loader>();
+  const { videos, mappings } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher();
+  const [productId, setProductId] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [modalActive, setModalActive] = useState(false);
 
@@ -69,6 +98,31 @@ export default function Videos() {
       <TitleBar title="Video Management" />
       <BlockStack gap="500">
         <Layout>
+          <Layout.Section>
+            <Card>
+              <BlockStack gap="300">
+                <Text as="h2" variant="headingMd">Product Video Mappings</Text>
+                <Form onSubmit={() => {
+                  const form = new FormData();
+                  form.append("action", "upsert_mapping");
+                  form.append("productId", productId);
+                  form.append("videoUrl", videoUrl);
+                  fetcher.submit(form, { method: "post" });
+                }}>
+                  <FormLayout>
+                    <TextField label="Product ID" value={productId} onChange={setProductId} placeholder="e.g. 1234567890" />
+                    <TextField label="Video URL" value={videoUrl} onChange={setVideoUrl} placeholder="https://.../video.mp4" />
+                    <Button submit primary>Save Mapping</Button>
+                  </FormLayout>
+                </Form>
+                <DataTable
+                  columnContentTypes={["text","text"]}
+                  headings={["Product ID","Video URL"]}
+                  rows={(mappings || []).map((m:any)=>[m.productId, m.videoUrl])}
+                />
+              </BlockStack>
+            </Card>
+          </Layout.Section>
           <Layout.Section>
             <Card>
               <BlockStack gap="500">

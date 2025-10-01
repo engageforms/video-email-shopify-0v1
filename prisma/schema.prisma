@@ -46,3 +46,27 @@ model CustomerVideoData {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  shop      String
+  name      String
+  subject   String
+  body      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([shop, isDefault])
+}
+
+model ProductVideo {
+  id        String   @id @default(cuid())
+  shop      String
+  productId String
+  videoUrl  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, productId])
+}
