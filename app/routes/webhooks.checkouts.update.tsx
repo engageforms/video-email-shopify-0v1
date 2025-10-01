@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
+import { sendEmail, renderTemplate } from "../services/email.server";
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { shop, session, topic, payload } = await authenticate.webhook(request);
@@ -49,6 +50,39 @@ export const action = async ({ request }: ActionFunctionArgs) => {
             status: "checkout_updated"
           }
         });
+      }
+
+      // If the checkout has become abandoned, send email once
+      const abandoned = checkout.abandoned_checkout_url || (!checkout.completed_at && checkout.presentment_currency && checkout.recovery_url);
+      if (abandoned && checkout.customer?.email) {
+        // Fetch default template
+        const template = await db.emailTemplate.findFirst({
+          where: { shop, isDefault: true },
+          orderBy: { createdAt: 'desc' },
+        });
+        // Map product to video URL (first matching item)
+        const productId = checkout.line_items?.[0]?.product_id?.toString();
+        const mapping = productId ? await (db as any).productVideo.findUnique({
+          where: { shop_productId: { shop, productId } },
+        }) : null;
+
+        if (template && mapping) {
+          const html = renderTemplate({
+            templateBody: template.body,
+            variables: {
+              customer_first_name: checkout.customer?.first_name || "",
+              customer_last_name: checkout.customer?.last_name || "",
+              video_link: mapping.videoUrl,
+              product_id: productId || "",
+            },
+          });
+
+          await sendEmail({
+            to: checkout.customer.email,
+            subject: template.subject,
+            html,
+          });
+        }
       }
     }
 
